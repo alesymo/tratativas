@@ -1,0 +1,1918 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <style>
+    :root { --meli-yellow: #fff159; --meli-blue: #2d3277; --text-muted: #666666; --sidebar-width: 250px; }
+    body { background-color: #f5f5f5; font-size: 0.9rem; font-family: -apple-system, sans-serif; }
+
+    /* ===== LAYOUT COM MENU LATERAL ===== */
+    .app-shell { display: flex; align-items: stretch; min-height: 100vh; }
+
+    .sidebar {
+      width: var(--sidebar-width);
+      flex: 0 0 var(--sidebar-width);
+      background-color: #ffffff;
+      border-right: 1px solid #e6e6e6;
+      padding: 1.25rem 0;
+      position: sticky;
+      top: 0;
+      align-self: flex-start;
+      height: 100vh;
+      overflow-y: auto;
+      z-index: 1030;
+    }
+    .sidebar-brand { padding: 0 1rem 1rem; text-align: center; border-bottom: 1px solid #eee; margin-bottom: .75rem; }
+    .sidebar-brand h5 { color: var(--meli-blue); font-weight: 800; margin: 0; }
+
+    .sidebar .nav-link {
+      display: block;
+      width: 100%;
+      text-align: left;
+      color: var(--meli-blue);
+      font-weight: bold;
+      font-size: 0.78rem;
+      cursor: pointer;
+      padding: 10px 16px;
+      border-left: 4px solid transparent;
+      border-radius: 0;
+      line-height: 1.2;
+    }
+    .sidebar .nav-link:hover { background-color: #f5f5f5; }
+    .sidebar .nav-link.active {
+      background-color: var(--meli-yellow) !important;
+      border-left-color: var(--meli-blue);
+    }
+
+    .main-content { flex: 1 1 auto; min-width: 0; padding: 1.5rem; }
+
+    /* Centraliza de verdade (na largura toda do conteúdo, não só dentro do
+       espaço sobrando) os cards de bipagem simples, e afasta um pouco do
+       campo "Identificação do PS" logo acima. */
+    .bip-center-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 3rem;
+    }
+
+    #btnToggleSidebar { display: none; }
+    @media (max-width: 900px) {
+      #btnToggleSidebar {
+        position: fixed;
+        top: 12px; left: 12px;
+        z-index: 1040;
+        border-radius: 8px;
+        width: 42px; height: 42px;
+        align-items: center; justify-content: center;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .sidebar {
+        position: fixed;
+        left: 0; top: 0;
+        transform: translateX(-100%);
+        transition: transform .2s ease-in-out;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.15);
+      }
+      .sidebar.show { transform: translateX(0); }
+      .sidebar-backdrop {
+        display: none;
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.35);
+        z-index: 1020;
+      }
+      .sidebar-backdrop.show { display: block; }
+      #btnToggleSidebar { display: inline-flex; }
+      .main-content { padding-top: 4.5rem; }
+    }
+
+    .card { border-radius: 12px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .card-operator { background-color: #eaeaea; border-left: 5px solid var(--meli-blue); }
+    .btn-meli { background-color: var(--meli-blue); color: white; border-radius: 8px; }
+    .btn-meli:hover { color: white; opacity: 0.9; }
+
+    .indicator-card-clean {
+      background-color: #ffffff;
+      border-radius: 10px;
+      padding: 12px 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid #e6e6e6;
+      height: 100%;
+    }
+    .indicator-card-clean .info-box h6 {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .indicator-card-clean .info-box h2 {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: #333333;
+      margin: 4px 0 0 0;
+    }
+    .indicator-card-clean .icon-box {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .ico-prejuizo { background-color: #fdedec; color: #e74c3c; }
+    .ico-cancelado { background-color: #ebf5fb; color: var(--meli-blue); }
+    .ico-espera { background-color: #fef9e7; color: #f39c12; }
+    .ico-shipados { background-color: #eaf2f1; color: #34495e; }
+    .ico-troca { background-color: #e8f8f5; color: #1abc9c; }
+    .ico-documentado { background-color: #eafaf1; color: #16a085; }
+
+    .card-bipagem { border-left: 5px solid #f39c12; }
+
+    .hidden-field { display: none; }
+    .table-sm { font-size: 0.85rem; }
+    .sticky-header { position: sticky; top: 0; background: white; z-index: 10; }
+
+    /* ===== REGISTRO DE FOUND ===== */
+    .found-stat { border-radius: 10px; padding: 16px; text-align: center; border: 1px solid; height: 100%; }
+    .found-stat .rotulo { font-size: 0.72rem; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; }
+    .found-stat .valor { font-size: 2rem; font-weight: 800; line-height: 1.2; margin: 2px 0 0; color: #1f2340; }
+    .found-stat.neutro { background: #f4f5fb; border-color: #dfe2f0; color: #666; }
+    .found-stat.enviado { background: #fdf0f0; border-color: #f3c0c0; color: #e74c3c; }
+    .found-stat.nao-enviado { background: #effaf3; border-color: #bfe6cd; color: #1e9e55; }
+    .found-num { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 700; }
+    .found-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  </style>
+</head>
+<body>
+
+<button type="button" class="btn btn-meli" id="btnToggleSidebar" title="Abrir menu">
+  <i class="fa-solid fa-bars"></i>
+</button>
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+<div class="app-shell">
+
+  <nav class="sidebar" id="sidebarNav">
+    <div class="sidebar-brand">
+      <h5>MESA DE TRATATIVAS</h5>
+    </div>
+    <ul class="nav flex-column" id="mainTabs" role="tablist">
+      <li class="nav-item"><button class="nav-link active" data-target="tab-avaria">CANCELAMENTO POR AVARIA</button></li>
+      <li class="nav-item"><button class="nav-link" data-target="tab-sistemico">CANCELAMENTO SISTÊMICO</button></li>
+      <li class="nav-item"><button class="nav-link" data-target="tab-espera">PEDIDOS EM ESPERA</button></li>
+      <li class="nav-item"><button class="nav-link" data-target="tab-troca-transportadora">TROCA DE TRANSPORTADORA</button></li>
+      <li class="nav-item"><button class="nav-link" data-target="tab-pedidos-shipados">PEDIDOS SHIPADOS</button></li>
+      <li class="nav-item"><button class="nav-link" data-target="tab-pedidos-documentados">PEDIDOS DOCUMENTADOS</button></li>
+      <li class="nav-item"><button class="nav-link" data-target="tab-found">REGISTRO DE FOUND</button></li>
+      <li class="nav-item"><button class="nav-link" data-target="tab-hist-detalhado">HISTÓRICO DETALHADO</button></li>
+      <li class="nav-item"><button class="nav-link" data-target="tab-hist">INDICADORES</button></li>
+      <li class="nav-item"><button class="nav-link" data-target="tab-config">CONFIGURAÇÕES PS</button></li>
+    </ul>
+  </nav>
+
+  <div class="main-content">
+
+  <div class="card card-operator mx-auto mb-4" style="max-width: 900px;">
+    <div class="card-body py-2 px-3">
+      <div class="row g-2 align-items-center">
+        <div class="col-auto text-dark fw-bold"><i class="fa-solid fa-user-shield me-1"></i> Identificação do PS:</div>
+        <div class="col-md-4">
+          <select class="form-select form-select-sm" id="psGlobal" onchange="setTurnoGlobal(this)"></select>
+        </div>
+        <div class="col-md-2">
+          <input type="text" class="form-control form-control-sm" id="turnoGlobal" placeholder="Turno" readonly style="background-color: #f5f5f5;">
+        </div>
+        <div class="col-auto">
+          <span class="badge bg-primary fs-6" id="cadBadge">—</span>
+          <button type="button" class="btn btn-sm btn-outline-secondary ms-1" onclick="abrirModalCad()">Trocar CAD</button>
+        </div>
+        <div class="col text-end text-muted small">*Obrigatório preencher para realizar registros</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-content">
+
+    <!-- ===================== CANCELAMENTO POR AVARIA (bipagem unitária) ===================== -->
+    <div class="tab-pane-custom" id="tab-avaria">
+      <div class="bip-center-wrap">
+        <div class="card card-bipagem" style="max-width: 700px; width: 100%;">
+          <div class="card-body p-4">
+            <label class="form-label fw-bold text-primary"><i class="fa-solid fa-dumpster me-2"></i>Bipar Pedido para Cancelamento por Avaria</label>
+            <input type="text" class="form-control" id="avariaPedidoBip" placeholder="" autocomplete="off">
+            <div class="form-text">Ao bipar, o cancelamento por avaria é registrado automaticamente — não é necessário clicar em nenhum botão.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== CANCELAMENTO SISTÊMICO (bipagem unitária) ===================== -->
+    <div class="tab-pane-custom d-none" id="tab-sistemico">
+      <div class="bip-center-wrap">
+        <div class="card card-bipagem" style="max-width: 700px; width: 100%;">
+          <div class="card-body p-4">
+            <label class="form-label fw-bold text-primary"><i class="fa-solid fa-barcode me-2"></i>Bipar Pedido para Cancelamento Sistêmico</label>
+            <input type="text" class="form-control" id="sistemicoPedidoBip" placeholder="" autocomplete="off">
+            <div class="form-text">Ao bipar, o cancelamento sistêmico é registrado automaticamente — não é necessário clicar em nenhum botão.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== PEDIDOS EM ESPERA (bipagem unitária) / PARCIAL ===================== -->
+    <div class="tab-pane-custom d-none" id="tab-espera">
+      <div class="bip-center-wrap">
+        <div class="card card-bipagem" style="max-width: 700px; width: 100%;">
+          <div class="card-body p-4">
+            <label class="form-label fw-bold text-primary"><i class="fa-solid fa-barcode me-2"></i>Bipar Pedido em Espera (Enviado para ER)</label>
+            <input type="text" class="form-control" id="esperaPedido" placeholder="" autocomplete="off">
+            <div class="form-text">Ao bipar, o pedido em espera é registrado automaticamente — não é necessário clicar em nenhum botão.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bip-center-wrap" style="margin-top: 1.25rem;">
+        <div class="card card-bipagem" style="max-width: 700px; width: 100%;">
+          <div class="card-body p-4">
+            <label class="form-label fw-bold text-primary"><i class="fa-solid fa-barcode me-2"></i>Bipar Pedido Parcial Liberado</label>
+            <input type="text" class="form-control" id="parcialPedido" placeholder="" autocomplete="off">
+            <div class="form-text">Ao bipar, o pedido parcial liberado é registrado automaticamente — não é necessário clicar em nenhum botão.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== TROCA DE TRANSPORTADORA (bipagem unitária) ===================== -->
+    <div class="tab-pane-custom d-none" id="tab-troca-transportadora">
+      <div class="bip-center-wrap">
+        <div class="card card-bipagem" style="max-width: 700px; width: 100%;">
+          <div class="card-body p-4">
+            <label class="form-label fw-bold text-primary"><i class="fa-solid fa-truck-fast me-2"></i>Bipar Pedido para Troca de Transportadora</label>
+            <input type="text" class="form-control" id="trocaTransportadoraBip" placeholder="" autocomplete="off">
+            <div class="form-text">Ao bipar, o registro é salvo automaticamente — não é necessário clicar em nenhum botão.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== PEDIDOS SHIPADOS (bipagem unitária) ===================== -->
+    <div class="tab-pane-custom d-none" id="tab-pedidos-shipados">
+      <div class="bip-center-wrap">
+        <div class="card card-bipagem" style="max-width: 700px; width: 100%;">
+          <div class="card-body p-4">
+            <label class="form-label fw-bold text-primary"><i class="fa-solid fa-plane-departure me-2"></i>Bipar Pedido Shipado</label>
+            <input type="text" class="form-control" id="pedidosShipadosBip" placeholder="" autocomplete="off">
+            <div class="form-text">Ao bipar, o registro é salvo automaticamente — não é necessário clicar em nenhum botão.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== PEDIDOS DOCUMENTADOS (bipagem unitária) ===================== -->
+    <div class="tab-pane-custom d-none" id="tab-pedidos-documentados">
+      <div class="bip-center-wrap">
+        <div class="card card-bipagem" style="max-width: 700px; width: 100%;">
+          <div class="card-body p-4">
+            <label class="form-label fw-bold text-primary"><i class="fa-solid fa-file-circle-check me-2"></i>Bipar Pedido Documentado</label>
+            <input type="text" class="form-control" id="pedidosDocumentadosBip" placeholder="" autocomplete="off">
+            <div class="form-text">Ao bipar, o registro é salvo automaticamente — não é necessário clicar em nenhum botão.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== REGISTRO DE FOUND ===================== -->
+    <div class="tab-pane-custom d-none" id="tab-found">
+
+      <!-- Bipagem: um bloco por CAD, cada um com dois campos -->
+      <div class="row g-3 mt-1 mb-4" id="foundBipagemCards"></div>
+
+      <!-- Filtros -->
+      <div class="card p-3">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-2">
+            <label class="form-label">Data Início</label>
+            <input type="date" class="form-control" id="ffInicio" onchange="carregarFound()">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Data Fim</label>
+            <input type="date" class="form-control" id="ffFim" onchange="carregarFound()">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">CAD</label>
+            <select class="form-select" id="ffCAD" onchange="carregarFound()">
+              <option value="">Todos</option>
+              <option value="SP04">SP04</option>
+              <option value="SP14">SP14</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Turno</label>
+            <select class="form-select" id="ffTurno" onchange="carregarFound()">
+              <option value="">Todos</option>
+              <option value="T1">T1</option><option value="T2">T2</option>
+              <option value="T3">T3</option><option value="T4">T4</option>
+              <option value="T5">T5</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">PS Responsável</label>
+            <select class="form-select" id="ffPS" onchange="carregarFound()"><option value="">Todos os PS</option></select>
+          </div>
+        </div>
+        <div class="text-end mt-3">
+          <button type="button" class="btn btn-sm btn-outline-secondary me-2" onclick="carregarFound()"><i class="fa-solid fa-rotate me-1"></i>Atualizar</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="limparFiltrosFound()">Limpar Filtros</button>
+        </div>
+      </div>
+
+      <!-- Cards -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <div class="found-stat neutro"><div class="rotulo">Total Tratados</div><div class="valor" id="fdTotal">0</div></div>
+        </div>
+        <div class="col-md-4">
+          <div class="found-stat enviado"><div class="rotulo">Enviados</div><div class="valor" id="fdEnviados">0</div></div>
+        </div>
+        <div class="col-md-4">
+          <div class="found-stat nao-enviado"><div class="rotulo">Não Enviados</div><div class="valor" id="fdNaoEnviados">0</div></div>
+        </div>
+      </div>
+
+      <!-- Resumo por PS -->
+      <div class="card p-3">
+        <h6 class="fw-bold text-dark mb-2">Resumo por PS Responsável <span class="text-muted small fw-normal">(clique em um nome para filtrar)</span></h6>
+        <div class="table-responsive" style="max-height: 300px;">
+          <table class="table table-sm table-hover align-middle mb-0">
+            <thead class="sticky-header table-light">
+              <tr>
+                <th>PS Responsável</th>
+                <th class="text-end text-danger">Enviados</th>
+                <th class="text-end text-success">Não Enviados</th>
+                <th class="text-end">Total</th>
+              </tr>
+            </thead>
+            <tbody id="fdTblPS"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Gráficos -->
+      <div class="card p-3">
+        <h6 class="fw-bold text-dark mb-2">Tratativas por Dia</h6>
+        <div style="height: 300px;"><canvas id="graficoFoundDia"></canvas></div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <div class="card p-3 h-100">
+            <h6 class="fw-bold text-dark mb-2">Tratativas por Semana</h6>
+            <div style="height: 280px;"><canvas id="graficoFoundSemana"></canvas></div>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="card p-3 h-100">
+            <h6 class="fw-bold text-dark mb-2">Tratativas por Mês</h6>
+            <div style="height: 280px;"><canvas id="graficoFoundMes"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Histórico -->
+      <div class="card p-3">
+        <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
+          <div>
+            <h6 class="fw-bold text-dark m-0">Histórico de Tratativas</h6>
+            <div class="text-muted small mt-1" id="fdNotaHist"></div>
+          </div>
+          <button type="button" class="btn btn-success btn-sm" id="btnExportarFound" onclick="exportarCsvFound()">Exportar CSV</button>
+        </div>
+        <div class="table-responsive" style="max-height: 420px;">
+          <table class="table table-sm table-hover align-middle mb-0">
+            <thead class="sticky-header table-light">
+              <tr><th>Data/Hora</th><th>MeliSKU</th><th>Status</th><th>PS Responsável</th><th>CAD</th><th>Turno</th><th class="text-end">Qtd</th></tr>
+            </thead>
+            <tbody id="fdTblHist"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== HISTÓRICO DETALHADOS ===================== -->
+    <div class="tab-pane-custom d-none" id="tab-hist-detalhado">
+      <div class="card p-3">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-2">
+            <label class="form-label">Data Início</label>
+            <input type="date" class="form-control" id="fcInicio">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Data Fim</label>
+            <input type="date" class="form-control" id="fcFim">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">PS Responsável</label>
+            <select class="form-select" id="fcPS"><option value="">Todos</option></select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">CAD</label>
+            <select class="form-select" id="fcCAD">
+              <option value="">Todos</option>
+              <option value="SP04">SP04</option>
+              <option value="SP14">SP14</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <button type="button" class="btn btn-meli w-100" onclick="carregarHistoricoDetalhado()"><i class="fa-solid fa-filter me-2"></i>FILTRAR</button>
+          </div>
+          <div class="col-md-1">
+            <button type="button" class="btn btn-secondary w-100" onclick="limparFiltrosHistoricoDetalhado()" title="Limpar"><i class="fa-solid fa-trash-can"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Avaria -->
+      <div class="card p-3 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+          <h6 class="fw-bold text-dark m-0"><i class="fa-solid fa-dumpster me-2"></i>CANCELAMENTO POR AVARIA</h6>
+          <button type="button" class="btn btn-sm btn-outline-success" onclick="baixarCsvHistorico('historicoAvaria')">
+            <i class="fa-solid fa-file-csv me-1"></i>Baixar CSV
+          </button>
+        </div>
+        <div class="table-responsive" style="max-height: 350px;">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="sticky-header table-light">
+              <tr><th>Data/Hora</th><th>Pedido</th><th>PS Resp.</th><th>Turno</th><th>CAD</th></tr>
+            </thead>
+            <tbody id="listaHistAvaria"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Cancelamento Sistêmico -->
+      <div class="card p-3 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+          <h6 class="fw-bold text-dark m-0"><i class="fa-solid fa-ban me-2"></i>CANCELAMENTO SISTÊMICO</h6>
+          <button type="button" class="btn btn-sm btn-outline-success" onclick="baixarCsvHistorico('historicoSistemico')">
+            <i class="fa-solid fa-file-csv me-1"></i>Baixar CSV
+          </button>
+        </div>
+        <div class="table-responsive" style="max-height: 350px;">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="sticky-header table-light">
+              <tr><th>Data/Hora</th><th>Pedido</th><th>PS Resp.</th><th>Turno</th><th>CAD</th></tr>
+            </thead>
+            <tbody id="listaHistSistemico"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Pedidos em Espera (Enviados para ER) -->
+      <div class="card p-3 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+          <h6 class="fw-bold text-dark m-0"><i class="fa-solid fa-hourglass-half me-2"></i>PEDIDOS EM ESPERA (ENVIADOS PARA ER)</h6>
+          <button type="button" class="btn btn-sm btn-outline-success" onclick="baixarCsvHistorico('historicoEspera')">
+            <i class="fa-solid fa-file-csv me-1"></i>Baixar CSV
+          </button>
+        </div>
+        <div class="table-responsive" style="max-height: 350px;">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="sticky-header table-light">
+              <tr><th>Data/Hora</th><th>Pedido</th><th>PS Resp.</th><th>Turno</th><th>CAD</th></tr>
+            </thead>
+            <tbody id="listaHistEspera"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Pedidos Parciais Liberados -->
+      <div class="card p-3 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+          <h6 class="fw-bold text-dark m-0"><i class="fa-solid fa-scissors me-2"></i>PEDIDOS PARCIAIS LIBERADOS</h6>
+          <button type="button" class="btn btn-sm btn-outline-success" onclick="baixarCsvHistorico('historicoParcial')">
+            <i class="fa-solid fa-file-csv me-1"></i>Baixar CSV
+          </button>
+        </div>
+        <div class="table-responsive" style="max-height: 350px;">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="sticky-header table-light">
+              <tr><th>Data/Hora</th><th>Pedido</th><th>PS Resp.</th><th>Turno</th><th>CAD</th></tr>
+            </thead>
+            <tbody id="listaHistParcial"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Troca de Transportadora -->
+      <div class="card p-3 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+          <h6 class="fw-bold text-dark m-0"><i class="fa-solid fa-truck-fast me-2"></i>TROCA DE TRANSPORTADORA</h6>
+          <button type="button" class="btn btn-sm btn-outline-success" onclick="baixarCsvHistorico('historicoTroca')">
+            <i class="fa-solid fa-file-csv me-1"></i>Baixar CSV
+          </button>
+        </div>
+        <div class="table-responsive" style="max-height: 350px;">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="sticky-header table-light">
+              <tr><th>Data/Hora</th><th>Pedido</th><th>PS Resp.</th><th>Turno</th><th>CAD</th></tr>
+            </thead>
+            <tbody id="listaHistTroca"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Pedidos Shipados -->
+      <div class="card p-3 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+          <h6 class="fw-bold text-dark m-0"><i class="fa-solid fa-plane-departure me-2"></i>PEDIDOS SHIPADOS</h6>
+          <button type="button" class="btn btn-sm btn-outline-success" onclick="baixarCsvHistorico('historicoShipados')">
+            <i class="fa-solid fa-file-csv me-1"></i>Baixar CSV
+          </button>
+        </div>
+        <div class="table-responsive" style="max-height: 350px;">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="sticky-header table-light">
+              <tr><th>Data/Hora</th><th>Pedido</th><th>PS Resp.</th><th>Turno</th><th>CAD</th></tr>
+            </thead>
+            <tbody id="listaHistShipados"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Pedidos Documentados -->
+      <div class="card p-3">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+          <h6 class="fw-bold text-dark m-0"><i class="fa-solid fa-file-circle-check me-2"></i>PEDIDOS DOCUMENTADOS</h6>
+          <button type="button" class="btn btn-sm btn-outline-success" onclick="baixarCsvHistorico('historicoDocumentados')">
+            <i class="fa-solid fa-file-csv me-1"></i>Baixar CSV
+          </button>
+        </div>
+        <div class="table-responsive" style="max-height: 350px;">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="sticky-header table-light">
+              <tr><th>Data/Hora</th><th>Pedido</th><th>PS Resp.</th><th>Turno</th><th>CAD</th></tr>
+            </thead>
+            <tbody id="listaHistDocumentados"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== INDICADORES ===================== -->
+    <div class="tab-pane-custom d-none" id="tab-hist">
+      <div class="card p-3">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-2">
+            <label class="form-label">Data Início</label>
+            <input type="date" class="form-control" id="fInicio">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Data Fim</label>
+            <input type="date" class="form-control" id="fFim">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">PS Responsável</label>
+            <select class="form-select" id="fPS"><option value="">Todos</option></select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">CAD</label>
+            <select class="form-select" id="fCAD">
+              <option value="">Todos</option>
+              <option value="SP04">SP04</option>
+              <option value="SP14">SP14</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <button type="button" class="btn btn-meli w-100" onclick="carregarIndicadores()"><i class="fa-solid fa-filter me-2"></i>FILTRAR</button>
+          </div>
+          <div class="col-md-1">
+            <button type="button" class="btn btn-secondary w-100" onclick="limparFiltrosIndicadores()" title="Limpar"><i class="fa-solid fa-trash-can"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-4">
+          <div class="indicator-card-clean">
+            <div class="info-box"><h6>Total Cancelados</h6><h2 id="stTotalCancelados">0</h2></div>
+            <div class="icon-box ico-cancelado"><i class="fa-solid fa-rectangle-xmark"></i></div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="indicator-card-clean">
+            <div class="info-box"><h6>Total de Avarias</h6><h2 id="stQtdPre">0</h2></div>
+            <div class="icon-box ico-prejuizo"><i class="fa-solid fa-dumpster"></i></div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="indicator-card-clean">
+            <div class="info-box"><h6>Total Cancelamentos Sistêmico</h6><h2 id="stTotalSistemico">0</h2></div>
+            <div class="icon-box ico-cancelado"><i class="fa-solid fa-ban"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-4">
+          <div class="indicator-card-clean">
+            <div class="info-box"><h6>Total Pedidos Shipados</h6><h2 id="stTotalShipados">0</h2></div>
+            <div class="icon-box ico-shipados"><i class="fa-solid fa-plane-departure"></i></div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="indicator-card-clean">
+            <div class="info-box"><h6>Total Troca de Transportadora</h6><h2 id="stTotalTroca">0</h2></div>
+            <div class="icon-box ico-troca"><i class="fa-solid fa-truck-fast"></i></div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="indicator-card-clean">
+            <div class="info-box"><h6>Total Pedidos Documentados</h6><h2 id="stTotalDocumentados">0</h2></div>
+            <div class="icon-box ico-documentado"><i class="fa-solid fa-file-circle-check"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <div class="indicator-card-clean">
+            <div class="info-box"><h6>Total Pedidos Em Espera (ER + Liberados)</h6><h2 id="stTotalEspera">0</h2></div>
+            <div class="icon-box ico-espera"><i class="fa-solid fa-hourglass-half"></i></div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="indicator-card-clean">
+            <div class="info-box"><h6>Pedidos em Espera (Enviados para ER)</h6><h2 id="stEsperaER">0</h2></div>
+            <div class="icon-box ico-cancelado"><i class="fa-solid fa-circle-check"></i></div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="indicator-card-clean">
+            <div class="info-box"><h6>Total Pedidos Parciais Liberados</h6><h2 id="stTotalParcial">0</h2></div>
+            <div class="icon-box ico-espera"><i class="fa-solid fa-scissors"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-4">
+        <div class="col-12">
+          <div class="indicator-card-clean">
+            <div class="info-box"><h6>Tratativas Realizadas pelos PS (Sistêmico + Avaria + Espera (tanto os enviados para ER como liberados) + Documentados + Troca de Transportadora + Shipados)</h6><h2 id="stTotalTratativas">0</h2></div>
+            <div class="icon-box ico-cancelado"><i class="fa-solid fa-clipboard-check"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-3 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+          <h6 class="fw-bold text-dark m-0"><i class="fa-solid fa-chart-column me-2"></i>CANCELAMENTOS POR PERÍODO<span id="tituloFiltroPSGrafico" class="text-muted fw-normal"></span></h6>
+          <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn btn-outline-secondary granularidade-btn active" data-granularidade="dia">Dia</button>
+            <button type="button" class="btn btn-outline-secondary granularidade-btn" data-granularidade="semana">Semana</button>
+            <button type="button" class="btn btn-outline-secondary granularidade-btn" data-granularidade="mes">Mês</button>
+          </div>
+        </div>
+        <div style="height: 340px;">
+          <canvas id="graficoIndicadores"></canvas>
+        </div>
+      </div>
+
+      <div class="card p-3 mb-4">
+        <h6 class="fw-bold text-dark mb-2"><i class="fa-solid fa-users me-2"></i>TRATATIVAS REALIZADAS POR TURNO DE PS</h6>
+        <div style="height: 340px;">
+          <canvas id="graficoTurno"></canvas>
+        </div>
+      </div>
+
+      <div class="card p-3">
+        <h6 class="fw-bold text-dark"><i class="fa-solid fa-ranking-star me-2"></i>TRATATIVAS POR PS <span class="text-muted small fw-normal">(clique em um nome para filtrar os gráficos)</span></h6>
+        <div class="table-responsive" style="max-height: 400px;">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="sticky-header table-light">
+              <tr>
+                <th>PS Responsável</th><th>Sistêmico</th><th>Avaria</th><th>Espera (ER)</th>
+                <th>Parcial Liberado</th><th>Troca Transp.</th><th>Shipados</th><th>Documentados</th><th>Total</th>
+              </tr>
+            </thead>
+            <tbody id="tblRankingPS"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== CONFIGURAÇÕES PS ===================== -->
+    <div class="tab-pane-custom d-none" id="tab-config">
+      <div class="card mx-auto" style="max-width: 600px;">
+        <div class="card-header bg-dark text-white">GESTÃO DA EQUIPE PS</div>
+        <div class="card-body p-4 text-center">
+          <p>Para adicionar ou excluir, confirme a senha.</p>
+          <div id="config-area">
+             <button type="button" class="btn btn-meli" onclick="autenticar()">DESBLOQUEAR ACESSO</button>
+          </div>
+
+          <div id="acesso-permitido" class="hidden-field mt-4">
+             <div class="row g-2 mb-4">
+               <div class="col-6"><input type="text" id="psNome" class="form-control" placeholder="Nome do PS"></div>
+               <div class="col-3">
+                 <select id="psTurno" class="form-select">
+                   <option value="T1">T1</option><option value="T2">T2</option>
+                   <option value="T3">T3</option><option value="T4">T4</option>
+                   <option value="T5">T5</option>
+                 </select>
+               </div>
+               <div class="col-3"><button type="button" class="btn btn-success w-100" onclick="salvarPS()">➕</button></div>
+             </div>
+             <hr>
+             <ul id="listaPs" class="list-group"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <!-- /.tab-content -->
+
+  </div>
+  <!-- /.main-content -->
+
+</div>
+<!-- /.app-shell -->
+
+<!-- ===================== MODAL: SELEÇÃO DE CAD ===================== -->
+<div class="modal fade" id="modalCad" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-center">
+      <div class="modal-header justify-content-center">
+        <h5 class="modal-title fw-bold" style="color: var(--meli-blue);">
+          <i class="fa-solid fa-warehouse me-2"></i>A qual CAD você pertence?
+        </h5>
+      </div>
+      <div class="modal-body p-4">
+        <div class="d-flex gap-3 justify-content-center">
+          <button type="button" class="btn btn-meli btn-lg px-5" onclick="selecionarCad('SP04')">SP04</button>
+          <button type="button" class="btn btn-meli btn-lg px-5" onclick="selecionarCad('SP14')">SP14</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== TOAST DE MENSAGENS INFORMATIVAS ===================== -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1080">
+  <div id="toastSucesso" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="toastSucessoBody"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Fechar"></button>
+    </div>
+  </div>
+</div>
+
+<footer class="text-center py-4 mt-5 text-muted small border-top" style="background-color: #fafafa;">
+  Mercado Livre | Desenvolvido por <strong>José Álef Veríssimo Ribeiro</strong> | ICQA &copy; 2026
+</footer>
+
+<script>
+  // ===== ADAPTADOR PARA GITHUB PAGES =====
+  // Cole aqui a URL do Web App (Apps Script > Implantar > Gerenciar implantações > URL do app da Web).
+  // Termina com /exec
+  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwdinzN6wM6cJyakdXNAR-3DdoRElChkTSxeV1zYDrGtJg85J433z8U6aDL2MHUpqOu/exec';
+
+  // Recria a API google.script.run (withSuccessHandler / withFailureHandler / função)
+  // enviando um POST ao Apps Script. O código da tela não precisa mudar.
+  (function () {
+    function criarRunner(onOk, onFail) {
+      return new Proxy({}, {
+        get(_, prop) {
+          if (prop === 'withSuccessHandler') return fn => criarRunner(fn, onFail);
+          if (prop === 'withFailureHandler') return fn => criarRunner(onOk, fn);
+          return async (...args) => {
+            let resultado;
+            try {
+              // text/plain evita o preflight de CORS, que o Apps Script não responde.
+              const resp = await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ fn: String(prop), args: args }),
+                redirect: 'follow'
+              });
+              resultado = await resp.json();
+            } catch (e) {
+              resultado = { ok: false, error: 'Falha de conexão com o servidor: ' + e.message };
+            }
+            if (resultado.ok) {
+              if (onOk) onOk(resultado.data);
+            } else {
+              const err = new Error(resultado.error || 'Erro desconhecido');
+              if (onFail) onFail(err); else console.error(err);
+            }
+          };
+        }
+      });
+    }
+    window.google = { script: { run: criarRunner(null, null) } };
+  })();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  let pssData = [];
+  let graficoIndicadores = null;
+  let graficoTurno = null;
+  let granularidadeAtual = 'dia';
+  let psFiltroAtual = '';
+  let ultimaSerieDiaria = [];
+  let ultimoHistorico = {};
+  let cadAtual = '';
+
+  // Config declarativa do Histórico Detalhados: liga cada chave da resposta do
+  // backend (obterHistoricoDetalhado) ao <tbody> correspondente e ao nome do CSV.
+  const HISTORICO_CONFIG = [
+    { chave: 'historicoAvaria',       tbodyId: 'listaHistAvaria',       arquivo: 'historico_avaria.csv' },
+    { chave: 'historicoSistemico',    tbodyId: 'listaHistSistemico',    arquivo: 'historico_cancelamento_sistemico.csv' },
+    { chave: 'historicoEspera',       tbodyId: 'listaHistEspera',       arquivo: 'historico_espera_enviados_er.csv' },
+    { chave: 'historicoParcial',      tbodyId: 'listaHistParcial',      arquivo: 'historico_parciais_liberados.csv' },
+    { chave: 'historicoTroca',        tbodyId: 'listaHistTroca',        arquivo: 'historico_troca_transportadora.csv' },
+    { chave: 'historicoShipados',     tbodyId: 'listaHistShipados',     arquivo: 'historico_pedidos_shipados.csv' },
+    { chave: 'historicoDocumentados', tbodyId: 'listaHistDocumentados', arquivo: 'historico_pedidos_documentados.csv' }
+  ];
+
+  window.onload = () => {
+    carregarPSBase();
+    configurarSidebarToggle();
+    configurarNavegacaoAbas();
+    configurarBotoesGranularidade();
+    configurarBipagemAvaria();
+    configurarBipagemSistemico();
+    configurarBipagemEsperaRegistro();
+    configurarBipagemParcial();
+    configurarBipagemTrocaTransportadora();
+    configurarBipagemPedidosShipados();
+    configurarBipagemPedidosDocumentados();
+    montarBipagemFound();
+    abrirModalCad();
+  };
+
+  // ===================== CAD (SP04 / SP14) =====================
+  function abrirModalCad() {
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalCad')).show();
+  }
+
+  function selecionarCad(cad) {
+    cadAtual = cad;
+    document.getElementById('cadBadge').innerText = cad;
+    // Os filtros de Indicadores e Histórico já abrem no CAD do PS;
+    // ele pode trocar para "Todos" quando quiser.
+    ['fCAD', 'fcCAD'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = cad;
+    });
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalCad')).hide();
+    setTimeout(() => {
+      const ativo = document.querySelector('.tab-pane-custom:not(.d-none) input[type="text"]');
+      if (ativo) ativo.focus();
+    }, 300);
+  }
+
+  // ===================== MENU LATERAL (SIDEBAR) =====================
+  function configurarSidebarToggle() {
+    const sidebar = document.getElementById('sidebarNav');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    const btn = document.getElementById('btnToggleSidebar');
+    if (!sidebar || !btn) return;
+
+    const abrir = () => { sidebar.classList.add('show'); backdrop.classList.add('show'); };
+    const fechar = () => { sidebar.classList.remove('show'); backdrop.classList.remove('show'); };
+
+    btn.addEventListener('click', () => {
+      sidebar.classList.contains('show') ? fechar() : abrir();
+    });
+    backdrop.addEventListener('click', fechar);
+
+    // Expõe fechar() para ser usado ao trocar de aba em telas pequenas.
+    window._fecharSidebarMobile = fechar;
+  }
+
+  // ===================== MENSAGENS INFORMATIVAS (TOAST) =====================
+  // Mostra uma mensagem de sucesso que some sozinha, sem exigir clique em "OK".
+  function mostrarToast(mensagem) {
+    const corpo = document.getElementById('toastSucessoBody');
+    corpo.innerText = mensagem;
+    const toastEl = document.getElementById('toastSucesso');
+    const toast = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 3000 });
+    toast.show();
+  }
+
+  // ===================== NAVEGAÇÃO ENTRE ABAS =====================
+  function configurarNavegacaoAbas() {
+    const botoes = document.querySelectorAll('#mainTabs .nav-link');
+    botoes.forEach(botao => {
+      botao.addEventListener('click', function() {
+        botoes.forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+
+        document.querySelectorAll('.tab-pane-custom').forEach(painel => {
+          painel.classList.add('d-none');
+        });
+
+        const targetId = this.getAttribute('data-target');
+        document.getElementById(targetId).classList.remove('d-none');
+
+        if (targetId === 'tab-hist-detalhado') carregarHistoricoDetalhado();
+        if (targetId === 'tab-hist') carregarIndicadores();
+        if (targetId === 'tab-found') carregarFound();
+
+        if (typeof window._fecharSidebarMobile === 'function') window._fecharSidebarMobile();
+      });
+    });
+  }
+
+  function autenticar() {
+    const pass = prompt("Digite a senha de segurança:");
+    if(pass === "Meli@1234") {
+      document.getElementById('config-area').style.display = 'none';
+      document.getElementById('acesso-permitido').style.display = 'block';
+      renderizarPsAdmin();
+    } else {
+      alert("Senha incorreta!");
+    }
+  }
+
+  function carregarPSBase() {
+    google.script.run
+    .withSuccessHandler(res => {
+      pssData = res;
+
+      const select = document.getElementById('psGlobal');
+      select.innerHTML = '';
+      const optVazia = document.createElement('option'); optVazia.value = ''; select.appendChild(optVazia);
+      res.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.nome; opt.dataset.turno = p.turno; opt.innerText = p.nome;
+        select.appendChild(opt);
+      });
+
+      ['fPS', 'fcPS', 'ffPS'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const valorAtual = sel.value;
+        sel.innerHTML = '<option value="">' + (id === 'ffPS' ? 'Todos os PS' : 'Todos') + '</option>';
+        res.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.nome; opt.innerText = p.nome;
+          sel.appendChild(opt);
+        });
+        sel.value = valorAtual;
+      });
+
+      if(document.getElementById('acesso-permitido').style.display === 'block') {
+         renderizarPsAdmin();
+      }
+    })
+    .withFailureHandler(err => { alert("Erro ao carregar equipe: " + err.message); })
+    .buscarPSs();
+  }
+
+  function setTurnoGlobal(sel) {
+    const turno = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].dataset.turno : '';
+    document.getElementById('turnoGlobal').value = turno || "";
+  }
+
+  // Só exige o PS (usado pelo Registro de Found, onde o CAD vem do bloco bipado).
+  function validarPS() {
+    const ps = document.getElementById('psGlobal').value;
+    if(!ps) {
+      alert("ATENÇÃO: Selecione o seu nome antes de enviar.");
+      return false;
+    }
+    return true;
+  }
+
+  function validarOperador() {
+    if (!validarPS()) return false;
+    if (!cadAtual) {
+      abrirModalCad();
+      return false;
+    }
+    return true;
+  }
+
+  // ===================== CANCELAMENTO POR AVARIA (bipagem unitária) =====================
+  function configurarBipagemAvaria() {
+    const input = document.getElementById('avariaPedidoBip');
+    if (!input) return;
+    input.addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (!validarOperador()) return;
+
+      const valor = this.value.trim();
+      if (!valor) return;
+
+      this.disabled = true;
+      google.script.run
+      .withSuccessHandler(() => {
+        mostrarToast('Cancelamento por avaria registrado com sucesso!');
+        input.value = '';
+        input.disabled = false;
+        input.focus();
+      })
+      .withFailureHandler(err => {
+        alert('Erro ao registrar cancelamento por avaria: ' + err.message);
+        input.value = '';
+        input.disabled = false;
+        input.focus();
+      })
+      .salvarCancelamento({
+        numeroPedido: valor,
+        tipo: 'Avaria',
+        psResponsavel: document.getElementById('psGlobal').value,
+        turno: document.getElementById('turnoGlobal').value,
+        cad: cadAtual
+      });
+    });
+  }
+
+  // ===================== CANCELAMENTO SISTÊMICO (bipagem unitária) =====================
+  function configurarBipagemSistemico() {
+    const input = document.getElementById('sistemicoPedidoBip');
+    if (!input) return;
+    input.addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (!validarOperador()) return;
+
+      const bruto = this.value.trim();
+      const digitos = bruto.replace(/[^0-9]/g, '');
+      if (digitos.length !== 11) {
+        alert('O número do pedido deve ter 11 dígitos.');
+        this.value = '';
+        return;
+      }
+
+      this.disabled = true;
+      google.script.run
+      .withSuccessHandler(() => {
+        mostrarToast('Cancelamento sistêmico registrado com sucesso!');
+        input.value = '';
+        input.disabled = false;
+        input.focus();
+      })
+      .withFailureHandler(err => {
+        alert('Erro ao salvar cancelamento sistêmico: ' + err.message);
+        input.value = '';
+        input.disabled = false;
+        input.focus();
+      })
+      .salvarCancelamento({
+        numeroPedido: digitos,
+        tipo: 'Cancelamento Sistêmico',
+        psResponsavel: document.getElementById('psGlobal').value,
+        turno: document.getElementById('turnoGlobal').value,
+        cad: cadAtual
+      });
+    });
+  }
+
+  // ===================== PEDIDOS EM ESPERA — ENVIADOS PARA ER (bipagem unitária) =====================
+  function configurarBipagemEsperaRegistro() {
+    const input = document.getElementById('esperaPedido');
+    if (!input) return;
+    input.addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (!validarOperador()) return;
+
+      const valor = this.value.trim();
+      if (!valor) return;
+
+      this.disabled = true;
+      google.script.run
+      .withSuccessHandler(() => {
+        mostrarToast('Pedido em espera (enviado para ER) registrado com sucesso!');
+        input.value = '';
+        input.disabled = false;
+        input.focus();
+      })
+      .withFailureHandler(err => {
+        alert('Erro ao salvar pedido em espera: ' + err.message);
+        input.value = '';
+        input.disabled = false;
+        input.focus();
+      })
+      .salvarEspera({
+        numeroPedido: valor,
+        psResponsavel: document.getElementById('psGlobal').value,
+        turno: document.getElementById('turnoGlobal').value,
+        cad: cadAtual
+      });
+    });
+  }
+
+  // ===================== PEDIDOS PARCIALMENTE LIBERADOS (bipagem unitária) =====================
+  function configurarBipagemParcial() {
+    const input = document.getElementById('parcialPedido');
+    if (!input) return;
+    input.addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (!validarOperador()) return;
+
+      const valor = this.value.trim();
+      if (!valor) return;
+
+      this.disabled = true;
+      google.script.run
+      .withSuccessHandler(() => {
+        mostrarToast('Pedido parcial registrado com sucesso!');
+        input.value = '';
+        input.disabled = false;
+        input.focus();
+      })
+      .withFailureHandler(err => {
+        alert('Erro ao salvar pedido parcial: ' + err.message);
+        input.value = '';
+        input.disabled = false;
+        input.focus();
+      })
+      .salvarParcial({
+        numeroPedido: valor,
+        psResponsavel: document.getElementById('psGlobal').value,
+        turno: document.getElementById('turnoGlobal').value,
+        cad: cadAtual
+      });
+    });
+  }
+
+  // ===================== TROCA DE TRANSPORTADORA (bipagem unitária) =====================
+  function configurarBipagemTrocaTransportadora() {
+    const input = document.getElementById('trocaTransportadoraBip');
+    if (!input) return;
+    input.addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (!validarOperador()) return;
+
+      const valor = this.value.trim();
+      if (!valor) return;
+
+      this.disabled = true;
+      google.script.run
+      .withSuccessHandler(() => {
+        mostrarToast('Pedido registrado com sucesso!');
+        input.value = '';
+        input.disabled = false;
+        input.focus();
+      })
+      .withFailureHandler(err => {
+        alert('Erro ao registrar troca de transportadora: ' + err.message);
+        input.value = '';
+        input.disabled = false;
+        input.focus();
+      })
+      .salvarTrocaTransportadora({
+        numeroPedido: valor,
+        psResponsavel: document.getElementById('psGlobal').value,
+        turno: document.getElementById('turnoGlobal').value,
+        cad: cadAtual
+      });
+    });
+  }
+
+  // ===================== PEDIDOS SHIPADOS (bipagem unitária) =====================
+  function configurarBipagemPedidosShipados() {
+    const input = document.getElementById('pedidosShipadosBip');
+    if (!input) return;
+    input.addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (!validarOperador()) return;
+
+      const valor = this.value.trim();
+      if (!valor) return;
+
+      this.disabled = true;
+      google.script.run
+      .withSuccessHandler(() => {
+        mostrarToast('Pedido registrado com sucesso!');
+        input.value = '';
+        input.disabled = false;
+        input.focus();
+      })
+      .withFailureHandler(err => {
+        alert('Erro ao registrar pedido shipado: ' + err.message);
+        input.value = '';
+        input.disabled = false;
+        input.focus();
+      })
+      .salvarPedidoShipado({
+        numeroPedido: valor,
+        psResponsavel: document.getElementById('psGlobal').value,
+        turno: document.getElementById('turnoGlobal').value,
+        cad: cadAtual
+      });
+    });
+  }
+
+  // ===================== PEDIDOS DOCUMENTADOS (bipagem unitária) =====================
+  function configurarBipagemPedidosDocumentados() {
+    const input = document.getElementById('pedidosDocumentadosBip');
+    if (!input) return;
+    input.addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (!validarOperador()) return;
+
+      const valor = this.value.trim();
+      if (!valor) return;
+
+      this.disabled = true;
+      google.script.run
+      .withSuccessHandler(() => {
+        mostrarToast('Pedido documentado registrado com sucesso!');
+        input.value = '';
+        input.disabled = false;
+        input.focus();
+      })
+      .withFailureHandler(err => {
+        alert('Erro ao registrar pedido documentado: ' + err.message);
+        input.value = '';
+        input.disabled = false;
+        input.focus();
+      })
+      .salvarPedidoDocumentado({
+        numeroPedido: valor,
+        psResponsavel: document.getElementById('psGlobal').value,
+        turno: document.getElementById('turnoGlobal').value,
+        cad: cadAtual
+      });
+    });
+  }
+
+  // ===================== HISTÓRICO DETALHADOS =====================
+  function limparFiltrosHistoricoDetalhado() {
+    document.getElementById('fcInicio').value = "";
+    document.getElementById('fcFim').value = "";
+    document.getElementById('fcPS').value = "";
+    document.getElementById('fcCAD').value = "";
+    carregarHistoricoDetalhado();
+  }
+
+  function carregarHistoricoDetalhado() {
+    const inicio = document.getElementById('fcInicio').value;
+    const fim = document.getElementById('fcFim').value;
+    const ps = document.getElementById('fcPS').value;
+    const cad = document.getElementById('fcCAD').value;
+
+    HISTORICO_CONFIG.forEach(cfg => {
+      document.getElementById(cfg.tbodyId).innerHTML = '<tr><td colspan="5" class="text-center text-muted">Carregando...</td></tr>';
+    });
+
+    google.script.run
+    .withSuccessHandler(res => {
+      ultimoHistorico = res || {};
+      HISTORICO_CONFIG.forEach(cfg => {
+        renderizarTabelaHistorico(cfg.tbodyId, ultimoHistorico[cfg.chave] || []);
+      });
+    })
+    .withFailureHandler(err => {
+      HISTORICO_CONFIG.forEach(cfg => {
+        document.getElementById(cfg.tbodyId).innerHTML = '<tr><td colspan="5" class="text-center text-danger">Erro ao carregar dados</td></tr>';
+      });
+      alert("Erro ao obter histórico detalhado: " + err.message);
+    })
+    .obterHistoricoDetalhado(inicio, fim, ps, cad);
+  }
+
+  function renderizarTabelaHistorico(tbodyId, linhas) {
+    const tbody = document.getElementById(tbodyId);
+    tbody.innerHTML = '';
+    if (linhas.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Nenhum registro encontrado.</td></tr>';
+      return;
+    }
+    linhas.forEach(r => {
+      const tr = document.createElement('tr');
+      r.forEach(valor => {
+        const td = document.createElement('td');
+        td.innerText = valor;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ===================== EXPORTAÇÃO CSV (HISTÓRICO DETALHADOS) =====================
+  function baixarCsvHistorico(chave) {
+    const cfg = HISTORICO_CONFIG.find(c => c.chave === chave);
+    if (!cfg) return;
+
+    const linhas = ultimoHistorico[chave] || [];
+    if (linhas.length === 0) {
+      alert('Não há dados para exportar. Filtre um período com registros e tente novamente.');
+      return;
+    }
+
+    const cabecalho = ['Data/Hora', 'Pedido', 'PS Responsável', 'Turno', 'CAD'];
+    gerarDownloadCsv(cabecalho, linhas, cfg.arquivo);
+  }
+
+  function gerarDownloadCsv(cabecalho, linhas, nomeArquivo) {
+    const escapar = valor => {
+      const texto = String(valor === null || valor === undefined ? '' : valor);
+      if (/[";\n]/.test(texto)) return '"' + texto.replace(/"/g, '""') + '"';
+      return texto;
+    };
+
+    // Delimitador ";" — padrão do Excel em pt-BR (a vírgula é o separador decimal).
+    const todasLinhas = [cabecalho, ...linhas].map(linha => linha.map(escapar).join(';'));
+    const conteudo = '\uFEFF' + todasLinhas.join('\r\n'); // BOM garante acentuação correta ao abrir no Excel
+
+    const blob = new Blob([conteudo], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = nomeArquivo;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  // ===================== INDICADORES =====================
+  function limparFiltrosIndicadores() {
+    document.getElementById('fInicio').value = "";
+    document.getElementById('fFim').value = "";
+    document.getElementById('fPS').value = "";
+    document.getElementById('fCAD').value = "";
+    carregarIndicadores();
+  }
+
+  function configurarBotoesGranularidade() {
+    document.querySelectorAll('.granularidade-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.granularidade-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        granularidadeAtual = btn.dataset.granularidade;
+        renderizarGrafico(ultimaSerieDiaria);
+      });
+    });
+  }
+
+  function carregarIndicadores() {
+    const inicio = document.getElementById('fInicio').value;
+    const fim = document.getElementById('fFim').value;
+    const ps = document.getElementById('fPS').value;
+    const cad = document.getElementById('fCAD').value;
+    psFiltroAtual = ps;
+
+    document.getElementById('tblRankingPS').innerHTML = '<tr><td colspan="9" class="text-center text-muted">Carregando...</td></tr>';
+    const partesTitulo = [];
+    if (cad) partesTitulo.push(cad);
+    if (ps) partesTitulo.push(ps);
+    document.getElementById('tituloFiltroPSGrafico').innerText = partesTitulo.length ? (' — ' + partesTitulo.join(' / ')) : '';
+
+    google.script.run
+    .withSuccessHandler(res => {
+      document.getElementById('stQtdPre').innerText = res.stats.qtdPrej || 0;
+      document.getElementById('stTotalSistemico').innerText = res.totalSistemico || 0;
+      document.getElementById('stTotalParcial').innerText = res.totalParcial || 0;
+      document.getElementById('stTotalShipados').innerText = res.totalPedidosShipados || 0;
+      document.getElementById('stTotalTroca').innerText = res.totalTrocaTransportadora || 0;
+      document.getElementById('stTotalDocumentados').innerText = res.totalDocumentados || 0;
+      document.getElementById('stTotalCancelados').innerText = res.totalCancelados || 0;
+      document.getElementById('stTotalEspera').innerText = res.totalPedidosEmEspera || 0;
+      document.getElementById('stEsperaER').innerText = res.totalEsperaER || 0;
+      document.getElementById('stTotalTratativas').innerText = res.totalTratativas || 0;
+
+      ultimaSerieDiaria = res.serieDiaria || [];
+      renderizarGrafico(ultimaSerieDiaria);
+      renderizarGraficoTurno(res.porTurno || []);
+      renderizarRankingPS(res.porPS || []);
+    })
+    .withFailureHandler(err => { alert("Erro ao obter indicadores: " + err.message); })
+    .obterIndicadores(inicio, fim, ps, cad);
+  }
+
+  function renderizarRankingPS(lista) {
+    const tbody = document.getElementById('tblRankingPS');
+    tbody.innerHTML = '';
+    if (lista.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Nenhum registro encontrado</td></tr>';
+      return;
+    }
+    lista.forEach(p => {
+      const tr = document.createElement('tr');
+      tr.style.cursor = 'pointer';
+      if (p.nome === psFiltroAtual) tr.classList.add('table-warning');
+
+      const tdNome = document.createElement('td');
+      tdNome.innerHTML = '<strong></strong>';
+      tdNome.querySelector('strong').innerText = p.nome;
+
+      const vals = [p.sistemico, p.avaria, p.esperaER, p.parcial, p.trocaTransportadora, p.shipados, p.documentados, p.total];
+      tr.appendChild(tdNome);
+      vals.forEach(v => {
+        const td = document.createElement('td');
+        td.innerText = v;
+        tr.appendChild(td);
+      });
+
+      tr.addEventListener('click', () => {
+        document.getElementById('fPS').value = p.nome;
+        carregarIndicadores();
+      });
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---- Agregação da série diária em semana/mês e renderização do gráfico ----
+  function _parseDataChave(dataStr) {
+    const partes = dataStr.split('/');
+    return new Date(parseInt(partes[2], 10), parseInt(partes[1], 10) - 1, parseInt(partes[0], 10));
+  }
+
+  function _chaveSemana(data) {
+    const d = new Date(Date.UTC(data.getFullYear(), data.getMonth(), data.getDate()));
+    const diaSemana = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - diaSemana);
+    const inicioAno = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const semana = Math.ceil((((d - inicioAno) / 86400000) + 1) / 7);
+    return d.getUTCFullYear() + '-S' + String(semana).padStart(2, '0');
+  }
+
+  function _chaveMes(data) {
+    return String(data.getMonth() + 1).padStart(2, '0') + '/' + data.getFullYear();
+  }
+
+  function agregarSerie(serie, granularidade) {
+    if (granularidade === 'dia') {
+      return serie.map(item => ({ label: item.data, ...item }));
+    }
+    const mapa = {};
+    const ordem = [];
+    serie.forEach(item => {
+      const data = _parseDataChave(item.data);
+      const chave = granularidade === 'semana' ? _chaveSemana(data) : _chaveMes(data);
+      if (!mapa[chave]) {
+        mapa[chave] = {
+          label: chave, sistemico: 0, avaria: 0, esperaER: 0,
+          parcial: 0, trocaTransportadora: 0, shipados: 0, documentados: 0
+        };
+        ordem.push(chave);
+      }
+      mapa[chave].sistemico += item.sistemico;
+      mapa[chave].avaria += item.avaria;
+      mapa[chave].esperaER += item.esperaER;
+      mapa[chave].parcial += item.parcial;
+      mapa[chave].trocaTransportadora += item.trocaTransportadora;
+      mapa[chave].shipados += item.shipados;
+      mapa[chave].documentados += item.documentados;
+    });
+    return ordem.map(chave => mapa[chave]);
+  }
+
+  function renderizarGrafico(serieDiaria) {
+    const dadosAgregados = agregarSerie(serieDiaria, granularidadeAtual);
+    const ctx = document.getElementById('graficoIndicadores').getContext('2d');
+
+    const datasets = [
+      { label: 'Sistêmico', data: dadosAgregados.map(d => d.sistemico), backgroundColor: '#2d3277' },
+      { label: 'Avaria', data: dadosAgregados.map(d => d.avaria), backgroundColor: '#e74c3c' },
+      { label: 'Espera (ER)', data: dadosAgregados.map(d => d.esperaER), backgroundColor: '#f39c12' },
+      { label: 'Parcial Liberado', data: dadosAgregados.map(d => d.parcial), backgroundColor: '#9b59b6' },
+      { label: 'Troca Transportadora', data: dadosAgregados.map(d => d.trocaTransportadora), backgroundColor: '#1abc9c' },
+      { label: 'Shipados', data: dadosAgregados.map(d => d.shipados), backgroundColor: '#34495e' },
+      { label: 'Documentados', data: dadosAgregados.map(d => d.documentados), backgroundColor: '#16a085' }
+    ];
+
+    if (graficoIndicadores) graficoIndicadores.destroy();
+    graficoIndicadores = new Chart(ctx, {
+      type: 'bar',
+      data: { labels: dadosAgregados.map(d => d.label), datasets: datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { x: { stacked: false }, y: { beginAtZero: true, ticks: { precision: 0 } } },
+        plugins: { legend: { position: 'bottom' } }
+      }
+    });
+  }
+
+  // ---- Gráfico de Tratativas Realizadas por Turno de PS ----
+  // Obs.: assim como o ranking por PS, esta agregação respeita o filtro de
+  // período e de CAD — não é afetada pelo filtro de PS Responsável,
+  // para sempre mostrar a comparação completa entre todos os turnos.
+  function renderizarGraficoTurno(porTurno) {
+    const ctx = document.getElementById('graficoTurno').getContext('2d');
+
+    const labels = porTurno.map(t => t.turno);
+    const datasets = [
+      { label: 'Sistêmico', data: porTurno.map(t => t.sistemico), backgroundColor: '#2d3277' },
+      { label: 'Avaria', data: porTurno.map(t => t.avaria), backgroundColor: '#e74c3c' },
+      { label: 'Espera (ER)', data: porTurno.map(t => t.esperaER), backgroundColor: '#f39c12' },
+      { label: 'Parcial Liberado', data: porTurno.map(t => t.parcial), backgroundColor: '#9b59b6' },
+      { label: 'Troca Transportadora', data: porTurno.map(t => t.trocaTransportadora), backgroundColor: '#1abc9c' },
+      { label: 'Shipados', data: porTurno.map(t => t.shipados), backgroundColor: '#34495e' },
+      { label: 'Documentados', data: porTurno.map(t => t.documentados), backgroundColor: '#16a085' }
+    ];
+
+    if (graficoTurno) graficoTurno.destroy();
+    graficoTurno = new Chart(ctx, {
+      type: 'bar',
+      data: { labels: labels, datasets: datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { stacked: true },
+          y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
+        },
+        plugins: { legend: { position: 'bottom' } }
+      }
+    });
+  }
+
+  // ===================== REGISTRO DE FOUND =====================
+  const CADS_FOUND = ['SP04', 'SP14'];
+  const FOUND_STATUS = {
+    enviado:    { rotulo: 'Enviado para Found', cor: '#e74c3c' },
+    naoEnviado: { rotulo: 'Não enviado',        cor: '#1e9e55' }
+  };
+  const foundRecentes = { SP04: [], SP14: [] };
+  const foundCharts = { dia: null, semana: null, mes: null };
+  let foundReq = 0;
+
+  function montarBipagemFound() {
+    const wrap = document.getElementById('foundBipagemCards');
+    if (!wrap) return;
+
+    CADS_FOUND.forEach(cad => {
+      const col = document.createElement('div');
+      col.className = 'col-lg-6';
+      col.innerHTML = `
+        <div class="card card-bipagem h-100 mb-0">
+          <div class="card-body p-3">
+            <h6 class="fw-bold mb-3" style="color: var(--meli-blue);"><i class="fa-solid fa-warehouse me-2"></i>${cad}</h6>
+            <div class="row g-2">
+              <div class="col-sm-6">
+                <label class="form-label fw-bold small mb-1 text-danger" for="found${cad}enviado">Enviado para Found</label>
+                <input type="text" class="form-control found-input" id="found${cad}enviado" data-cad="${cad}" data-status="enviado" placeholder="Bipe o MeliSKU" autocomplete="off">
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label fw-bold small mb-1 text-success" for="found${cad}naoEnviado">Não enviado</label>
+                <input type="text" class="form-control found-input" id="found${cad}naoEnviado" data-cad="${cad}" data-status="naoEnviado" placeholder="Bipe o MeliSKU" autocomplete="off">
+              </div>
+            </div>
+            <div class="text-muted small mt-3 mb-1">Últimos registros desta sessão</div>
+            <div class="table-responsive" style="max-height: 220px;">
+              <table class="table table-sm align-middle mb-0">
+                <thead class="sticky-header table-light"><tr><th>Hora</th><th>MeliSKU</th><th>Status</th></tr></thead>
+                <tbody id="foundRecentes${cad}"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>`;
+      wrap.appendChild(col);
+      renderizarRecentesFound(cad);
+    });
+
+    wrap.querySelectorAll('.found-input').forEach(input => {
+      input.addEventListener('keydown', function(e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        registrarFound(this);
+      });
+    });
+  }
+
+  function registrarFound(input) {
+    if (!validarPS()) return;
+    const sku = input.value.trim();
+    if (!sku) return;
+
+    const cad = input.dataset.cad;
+    const status = input.dataset.status;
+
+    input.disabled = true;
+    google.script.run
+    .withSuccessHandler(() => {
+      mostrarToast('Found ' + cad + ': "' + FOUND_STATUS[status].rotulo + '" registrado com sucesso!');
+      adicionarRecenteFound(cad, sku, status);
+      input.value = '';
+      input.disabled = false;
+      input.focus();
+    })
+    .withFailureHandler(err => {
+      alert('Erro ao registrar ' + sku + ' (' + cad + ' / ' + FOUND_STATUS[status].rotulo + '): ' + err.message);
+      input.disabled = false;
+      input.focus();
+      input.select();
+    })
+    .salvarFound({
+      sku: sku,
+      status: status,
+      psResponsavel: document.getElementById('psGlobal').value,
+      turno: document.getElementById('turnoGlobal').value,
+      cad: cad
+    });
+  }
+
+  function adicionarRecenteFound(cad, sku, status) {
+    foundRecentes[cad].unshift({ hora: new Date().toLocaleTimeString('pt-BR'), sku: sku, status: status });
+    foundRecentes[cad] = foundRecentes[cad].slice(0, 10);
+    renderizarRecentesFound(cad);
+  }
+
+  function renderizarRecentesFound(cad) {
+    const tbody = document.getElementById('foundRecentes' + cad);
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    const lista = foundRecentes[cad];
+    if (lista.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Nenhum registro nesta sessão.</td></tr>';
+      return;
+    }
+    lista.forEach(item => {
+      const tr = document.createElement('tr');
+
+      const tdHora = document.createElement('td');
+      tdHora.className = 'found-mono';
+      tdHora.innerText = item.hora;
+
+      const tdSku = document.createElement('td');
+      tdSku.className = 'found-mono';
+      tdSku.innerText = item.sku;
+
+      const tdStatus = document.createElement('td');
+      tdStatus.innerText = FOUND_STATUS[item.status].rotulo;
+      tdStatus.style.color = FOUND_STATUS[item.status].cor;
+      tdStatus.style.fontWeight = '600';
+
+      tr.append(tdHora, tdSku, tdStatus);
+      tbody.appendChild(tr);
+    });
+  }
+
+  function lerFiltrosFound() {
+    return {
+      inicio: document.getElementById('ffInicio').value,
+      fim: document.getElementById('ffFim').value,
+      cad: document.getElementById('ffCAD').value,
+      turno: document.getElementById('ffTurno').value,
+      ps: document.getElementById('ffPS').value
+    };
+  }
+
+  function limparFiltrosFound() {
+    ['ffInicio', 'ffFim', 'ffCAD', 'ffTurno', 'ffPS'].forEach(id => { document.getElementById(id).value = ''; });
+    carregarFound();
+  }
+
+  function carregarFound() {
+    const f = lerFiltrosFound();
+    const req = ++foundReq; // descarta respostas antigas se o usuário mudar os filtros rápido
+
+    document.getElementById('fdTblPS').innerHTML = '<tr><td colspan="4" class="text-center text-muted">Carregando...</td></tr>';
+    document.getElementById('fdTblHist').innerHTML = '<tr><td colspan="7" class="text-center text-muted">Carregando...</td></tr>';
+
+    google.script.run
+    .withSuccessHandler(res => {
+      if (req !== foundReq) return;
+      document.getElementById('fdTotal').innerText = res.total || 0;
+      document.getElementById('fdEnviados').innerText = res.enviados || 0;
+      document.getElementById('fdNaoEnviados').innerText = res.naoEnviados || 0;
+
+      renderizarResumoFound(res.porPS || [], f.ps);
+      renderizarGraficosFound(res.serieDiaria || []);
+      renderizarHistoricoFound(res.historico || [], res.totalHistorico || 0);
+    })
+    .withFailureHandler(err => {
+      if (req !== foundReq) return;
+      document.getElementById('fdTblPS').innerHTML = '<tr><td colspan="4" class="text-center text-danger">Erro ao carregar dados</td></tr>';
+      document.getElementById('fdTblHist').innerHTML = '<tr><td colspan="7" class="text-center text-danger">Erro ao carregar dados</td></tr>';
+      alert('Erro ao obter dados de Found: ' + err.message);
+    })
+    .obterFound(f.inicio, f.fim, f.cad, f.turno, f.ps);
+  }
+
+  function renderizarResumoFound(lista, psSelecionado) {
+    const tbody = document.getElementById('fdTblPS');
+    tbody.innerHTML = '';
+    if (lista.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Nenhum registro encontrado.</td></tr>';
+      return;
+    }
+    lista.forEach(p => {
+      const tr = document.createElement('tr');
+      tr.style.cursor = 'pointer';
+      if (p.nome === psSelecionado) tr.classList.add('table-warning');
+
+      const tdNome = document.createElement('td');
+      tdNome.innerText = p.nome;
+
+      const tdEnv = document.createElement('td');
+      tdEnv.className = 'text-end found-num text-danger';
+      tdEnv.innerText = p.enviados;
+
+      const tdNao = document.createElement('td');
+      tdNao.className = 'text-end found-num text-success';
+      tdNao.innerText = p.naoEnviados;
+
+      const tdTotal = document.createElement('td');
+      tdTotal.className = 'text-end found-num';
+      tdTotal.innerText = p.total;
+
+      tr.append(tdNome, tdEnv, tdNao, tdTotal);
+      tr.addEventListener('click', () => {
+        document.getElementById('ffPS').value = p.nome;
+        carregarFound();
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---- Gráficos (dia / semana / mês) ----
+  function _fmtDiaFound(d) {
+    return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+  }
+
+  // Preenche os dias sem registro com zero, do primeiro ao último dia da série.
+  function preencherDiasVaziosFound(serie) {
+    if (!serie.length) return [];
+    const mapa = {};
+    serie.forEach(i => { mapa[i.data] = i.total; });
+    const ini = _parseDataChave(serie[0].data);
+    const fim = _parseDataChave(serie[serie.length - 1].data);
+    const out = [];
+    for (let d = new Date(ini); d <= fim; d.setDate(d.getDate() + 1)) {
+      const k = _fmtDiaFound(d);
+      out.push({ data: k, total: mapa[k] || 0 });
+    }
+    return out;
+  }
+
+  function agregarFound(serie, modo) {
+    const mapa = {};
+    const ordem = [];
+    serie.forEach(i => {
+      const dt = _parseDataChave(i.data);
+      let chave;
+      if (modo === 'semana') {
+        const partes = _chaveSemana(dt).split('-S'); // "2026-S35" -> ["2026","35"]
+        chave = 'Semana ' + partes[1] + '/' + partes[0];
+      } else {
+        chave = _chaveMes(dt);
+      }
+      if (!(chave in mapa)) { mapa[chave] = 0; ordem.push(chave); }
+      mapa[chave] += i.total;
+    });
+    return { labels: ordem, valores: ordem.map(k => mapa[k]) };
+  }
+
+  function desenharBarrasFound(chave, canvasId, labels, valores, cor, borda) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    if (foundCharts[chave]) foundCharts[chave].destroy();
+    foundCharts[chave] = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{ label: 'Tratativas', data: valores, backgroundColor: cor, borderColor: borda, borderWidth: 1, borderRadius: 6 }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { precision: 0 } } },
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
+
+  function renderizarGraficosFound(serieDiaria) {
+    const completa = preencherDiasVaziosFound(serieDiaria);
+    desenharBarrasFound('dia', 'graficoFoundDia',
+      completa.map(i => i.data.slice(0, 5)), completa.map(i => i.total),
+      'rgba(96, 165, 250, 0.8)', '#3b82f6');
+
+    const sem = agregarFound(completa, 'semana');
+    desenharBarrasFound('semana', 'graficoFoundSemana', sem.labels, sem.valores,
+      'rgba(34, 170, 100, 0.8)', '#16a34a');
+
+    const mes = agregarFound(completa, 'mes');
+    desenharBarrasFound('mes', 'graficoFoundMes', mes.labels, mes.valores,
+      'rgba(250, 224, 30, 0.9)', '#d4b800');
+  }
+
+  // ---- Histórico ----
+  function renderizarHistoricoFound(linhas, total) {
+    const tbody = document.getElementById('fdTblHist');
+    tbody.innerHTML = '';
+    document.getElementById('fdNotaHist').innerText =
+      'Registros mais recentes primeiro · exibindo ' + linhas.length + ' de ' + total + ' (o CSV exportado traz todos).';
+
+    if (linhas.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Nenhum registro encontrado.</td></tr>';
+      return;
+    }
+
+    linhas.forEach(r => {
+      // r = [Data/Hora, MeliSKU, Status, PS, CAD, Turno, Qtd]
+      const tr = document.createElement('tr');
+
+      const tdData = document.createElement('td');
+      tdData.className = 'found-mono small';
+      const partes = String(r[0]).split(' ');
+      tdData.append(partes[0] || '', document.createElement('br'), partes[1] || '');
+
+      const tdSku = document.createElement('td');
+      tdSku.className = 'found-mono fw-bold';
+      tdSku.innerText = r[1];
+
+      const tdStatus = document.createElement('td');
+      const enviado = (r[2] === FOUND_STATUS.enviado.rotulo);
+      tdStatus.innerText = '• ' + r[2];
+      tdStatus.style.color = enviado ? FOUND_STATUS.enviado.cor : FOUND_STATUS.naoEnviado.cor;
+      tdStatus.style.fontWeight = '600';
+
+      const tdPS = document.createElement('td'); tdPS.innerText = r[3];
+      const tdCad = document.createElement('td'); tdCad.innerText = r[4];
+      const tdTurno = document.createElement('td'); tdTurno.innerText = r[5];
+      const tdQtd = document.createElement('td'); tdQtd.className = 'text-end found-num'; tdQtd.innerText = r[6];
+
+      tr.append(tdData, tdSku, tdStatus, tdPS, tdCad, tdTurno, tdQtd);
+      tbody.appendChild(tr);
+    });
+  }
+
+  function exportarCsvFound() {
+    const f = lerFiltrosFound();
+    const btn = document.getElementById('btnExportarFound');
+    btn.disabled = true;
+    google.script.run
+    .withSuccessHandler(linhas => {
+      btn.disabled = false;
+      if (!linhas || linhas.length === 0) {
+        alert('Não há dados para exportar com os filtros atuais.');
+        return;
+      }
+      gerarDownloadCsv(['Data/Hora', 'MeliSKU', 'Status', 'PS Responsável', 'CAD', 'Turno', 'Qtd'], linhas, 'historico_found.csv');
+    })
+    .withFailureHandler(err => {
+      btn.disabled = false;
+      alert('Erro ao exportar CSV: ' + err.message);
+    })
+    .obterFoundExportacao(f.inicio, f.fim, f.cad, f.turno, f.ps);
+  }
+
+  // ===================== CONFIGURAÇÕES PS =====================
+  function renderizarPsAdmin() {
+    const ul = document.getElementById('listaPs'); ul.innerHTML = '';
+    pssData.forEach(p => {
+      const li = document.createElement('li');
+      li.className = 'list-group-item d-flex justify-content-between';
+
+      const span = document.createElement('span');
+      span.innerText = `${p.nome} (${p.turno})`;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-danger btn-sm';
+      btn.innerText = 'Sair';
+      btn.addEventListener('click', () => removerPS(p.nome));
+
+      li.append(span, btn);
+      ul.appendChild(li);
+    });
+  }
+
+  function salvarPS() {
+    const nome = document.getElementById('psNome').value;
+    const turno = document.getElementById('psTurno').value;
+    if(!nome) return;
+    google.script.run.withSuccessHandler(() => {
+      document.getElementById('psNome').value = "";
+      alert("Adicionado!");
+      carregarPSBase();
+    }).adicionarPS(nome, turno);
+  }
+
+  function removerPS(nome) {
+    if(confirm("Confirmar exclusão?")) {
+      google.script.run.withSuccessHandler(() => {
+        carregarPSBase();
+      }).excluirPS(nome);
+    }
+  }
+</script>
+</body>
+</html>
